@@ -523,8 +523,7 @@
       render();
     }
 const WEATHER_URL =
-  "https://api.open-meteo.com/v1/knmi?latitude=51.2194&longitude=4.4025&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&hourly=temperature_2m,precipitation_probability,weather_code&forecast_days=1&timezone=Europe%2FBrussels";
-
+  "https://api.open-meteo.com/v1/dwd-icon?latitude=51.2194&longitude=4.4025&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&hourly=temperature_2m,precipitation_probability,weather_code&forecast_days=1&timezone=Europe%2FBrussels";
 function weatherLabel(code) {
   const map = {
     0: "Helder",
