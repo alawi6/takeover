@@ -78,23 +78,25 @@ def upsert_row(rows, new_row):
     return list(by_date.values())
 
 def main():
-    # Optionele ping naar de pagina zelf, zodat de action duidelijk faalt als de bronpagina weg is.
-    page = requests.get(FOD_PAGE_URL, timeout=60)
-    page.raise_for_status()
+    try:
+        pdf_text = fetch_pdf_text()
+        effective_date = parse_effective_date(pdf_text)
+        prices = parse_prices(pdf_text)
 
-    pdf_text = fetch_pdf_text()
-    effective_date = parse_effective_date(pdf_text)
-    prices = parse_prices(pdf_text)
+        rows = read_existing_rows()
+        new_row = {"date": effective_date}
+        for key, value in prices.items():
+            new_row[key] = f"{value:.3f}"
 
-    rows = read_existing_rows()
-    new_row = {"date": effective_date}
-    for key, value in prices.items():
-        new_row[key] = f"{value:.3f}"
+        rows = upsert_row(rows, new_row)
+        write_rows(rows)
 
-    rows = upsert_row(rows, new_row)
-    write_rows(rows)
+        print("Bijgewerkt voor", effective_date, new_row)
 
-    print("Bijgewerkt voor", effective_date, new_row)
+    except Exception as e:
+        print("Kon de officiële bron nu niet bereiken of verwerken.")
+        print("Bestaande dataset.csv blijft behouden.")
+        print("Fout:", e)
 
 if __name__ == "__main__":
     main()
