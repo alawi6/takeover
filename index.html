@@ -5,6 +5,90 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Brandstofprijzen dashboard</title>
   <style>
+    .contentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 18px;
+  align-items: start;
+}
+
+.weatherPanel {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.weatherPanel h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.weatherNow {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.03);
+  margin-bottom: 12px;
+}
+
+.weatherTemp {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.weatherDesc {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: rgba(255,255,255,.9);
+}
+
+.weatherMeta {
+  font-size: 13px;
+  color: rgba(255,255,255,.72);
+  line-height: 1.5;
+}
+
+.weatherHours {
+  display: grid;
+  gap: 8px;
+}
+
+.weatherHourItem {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.weatherHourItem:last-child {
+  border-bottom: 0;
+}
+
+.weatherHourTime {
+  color: rgba(255,255,255,.78);
+  font-weight: 700;
+}
+
+.weatherHourCond {
+  color: rgba(255,255,255,.88);
+}
+
+.weatherHourTemp {
+  font-weight: 800;
+}
+
+@media (max-width: 980px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+    
     :root {
       --bg: #11131b;
       --panel: #151823;
@@ -200,10 +284,18 @@
         </select>
       </div>
 
-      <div id="chartWrap">
-        <svg id="chart" viewBox="0 0 1100 620" preserveAspectRatio="xMidYMid meet"></svg>
-        <div class="tooltip" id="tooltip"></div>
-      </div>
+<div class="contentGrid">
+  <div id="chartWrap">
+    <svg id="chart" viewBox="0 0 1100 620" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+
+  <aside class="weatherPanel">
+    <h3>Weer vandaag</h3>
+    <div id="weatherNow" class="weatherNow">Laden...</div>
+    <div id="weatherHours" class="weatherHours"></div>
+  </aside>
+</div>
 
 
     </div>
@@ -430,11 +522,99 @@
       state.data = normalize(parseCsv(txt));
       render();
     }
+const WEATHER_URL =
+  "https://api.open-meteo.com/v1/knmi?latitude=51.2194&longitude=4.4025&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&hourly=temperature_2m,precipitation_probability,weather_code&forecast_days=1&timezone=Europe%2FBrussels";
 
-    buildLegend();
-    rangeSelect.addEventListener("change", () => { state.range = rangeSelect.value; render(); });
-    loadAndRender();
-    setInterval(loadAndRender, state.refreshMs);
+function weatherLabel(code) {
+  const map = {
+    0: "Helder",
+    1: "Overwegend helder",
+    2: "Licht bewolkt",
+    3: "Bewolkt",
+    45: "Mist",
+    48: "Rijpnevel",
+    51: "Lichte motregen",
+    53: "Motregen",
+    55: "Dichte motregen",
+    61: "Lichte regen",
+    63: "Regen",
+    65: "Zware regen",
+    71: "Lichte sneeuw",
+    73: "Sneeuw",
+    75: "Zware sneeuw",
+    80: "Lichte buien",
+    81: "Buien",
+    82: "Zware buien",
+    95: "Onweer"
+  };
+  return map[code] || "Onbekend";
+}
+
+function hourPart(iso) {
+  return iso.slice(11, 16);
+}
+
+async function loadWeather() {
+  try {
+    const res = await fetch(WEATHER_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error("Weerdata kon niet geladen worden");
+    const data = await res.json();
+
+    const now = data.current;
+    const weatherNow = document.getElementById("weatherNow");
+    const weatherHours = document.getElementById("weatherHours");
+
+    weatherNow.innerHTML = `
+      <div class="weatherTemp">${Math.round(now.temperature_2m)}°</div>
+      <div class="weatherDesc">${weatherLabel(now.weather_code)}</div>
+      <div class="weatherMeta">
+        Gevoel: ${Math.round(now.apparent_temperature)}°<br>
+        Wind: ${Math.round(now.wind_speed_10m)} km/u<br>
+        Neerslag nu: ${Number(now.precipitation || 0).toFixed(1).replace(".", ",")} mm
+      </div>
+    `;
+
+    const times = data.hourly.time;
+    const temps = data.hourly.temperature_2m;
+    const probs = data.hourly.precipitation_probability;
+    const codes = data.hourly.weather_code;
+
+    const currentHour = new Date().getHours();
+    const todayItems = [];
+
+    for (let i = 0; i < times.length; i++) {
+      const hour = Number(times[i].slice(11, 13));
+      if (hour >= currentHour && todayItems.length < 6) {
+        todayItems.push({
+          time: times[i],
+          temp: temps[i],
+          prob: probs[i],
+          code: codes[i]
+        });
+      }
+    }
+
+    weatherHours.innerHTML = todayItems.map(item => `
+      <div class="weatherHourItem">
+        <div class="weatherHourTime">${hourPart(item.time)}</div>
+        <div class="weatherHourCond">${weatherLabel(item.code)} · ${item.prob ?? 0}%</div>
+        <div class="weatherHourTemp">${Math.round(item.temp)}°</div>
+      </div>
+    `).join("");
+  } catch (e) {
+    const weatherNow = document.getElementById("weatherNow");
+    const weatherHours = document.getElementById("weatherHours");
+    if (weatherNow) weatherNow.textContent = "Weerdata tijdelijk niet beschikbaar.";
+    if (weatherHours) weatherHours.innerHTML = "";
+    console.error(e);
+  }
+}
+buildLegend();
+rangeSelect.addEventListener("change", () => { state.range = rangeSelect.value; render(); });
+loadAndRender();
+loadWeather();
+setInterval(loadAndRender, state.refreshMs);
+setInterval(loadWeather, state.refreshMs);
   </script>
 </body>
 </html>
