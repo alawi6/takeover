@@ -327,13 +327,30 @@
     <div id="weatherHours" class="weatherHours"></div>
   </aside>
 
-  <aside class="etfPanel">
-    <h3>EMIM ETF</h3>
-    <div class="etfSub">iShares Core MSCI Emerging Markets IMI UCITS ETF (Acc)</div>
-    <div class="tradingview-widget-container">
-      <div id="tradingview_emim"></div>
-    </div>
-  </aside>
+<aside class="etfPanel">
+  <h3>EMIM ETF</h3>
+  <div class="etfSub">iShares Core MSCI Emerging Markets IMI UCITS ETF (Acc)</div>
+
+  <div class="tradingview-widget-container">
+    <div class="tradingview-widget-container__widget"></div>
+    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+    {
+      "autosize": true,
+      "symbol": "EURONEXT:EMIM",
+      "interval": "D",
+      "timezone": "Europe/Brussels",
+      "theme": "dark",
+      "style": "1",
+      "locale": "nl",
+      "hide_top_toolbar": false,
+      "hide_legend": false,
+      "allow_symbol_change": false,
+      "calendar": false,
+      "support_host": "https://www.tradingview.com"
+    }
+    </script>
+  </div>
+</aside>
 </div>
 
 
